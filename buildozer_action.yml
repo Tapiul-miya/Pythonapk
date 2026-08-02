@@ -1,0 +1,64 @@
+name: Android Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Set up Java 17
+      - name: Setup Java 17 required by Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Install System dependencies
+      - name: Install System dependencies
+        run: |
+          sudo apt update
+          sudo apt-get install -y \
+            build-essential git ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev \
+            libsdl2-ttf-dev libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
+            libunwind-dev zlib1g-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev openssl \
+            libgdbm-dev libgdbm-compat-dev liblzma-dev libreadline-dev uuid-dev \
+            libgstreamer1.0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            zip unzip autoconf libtool automake libltdl-dev m4 pkg-config \
+            libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev \
+            autopoint gettext
+
+      # Install exact safe pip dependencies
+      - name: Install pip dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install buildozer setuptools
+          pip install "cython<3.0.0"
+
+      # Core Fix: Pure clean up pre-build broken configs
+      - name: Buildozer App Clean
+        run: |
+          buildozer appclean
+
+      # Fresh compilation wrapper
+      - name: Build with Buildozer
+        run: |
+          yes | buildozer -v android debug
+
+      # Upload final working APK
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FixedWelcomeApp
+          path: bin/*.apk
